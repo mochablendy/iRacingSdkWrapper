@@ -25,7 +25,7 @@ namespace iRacingSimulator
         private bool _mustUpdateSessionData, _mustReloadDrivers;
         private TimeDelta _timeDelta;
 
-        private Sim()
+        protected Sim()
         {
             _sdk = new SdkWrapper();
             _drivers = new List<Driver>();
