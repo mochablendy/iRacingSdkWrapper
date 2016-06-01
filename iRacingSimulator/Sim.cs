@@ -60,13 +60,16 @@ namespace iRacingSimulator
         private Driver _leader;
         public Driver Leader{ get { return _leader; } }
 
+        private bool _isReplay;
+        public bool IsReplay { get { return _isReplay; } }
+
         #endregion
 
         #region Methods
         
         public void Start(double updateFrequency = 10)
         {
-            _sdk.Stop();
+            this.Reset();
             _sdk.TelemetryUpdateFrequency = updateFrequency;
             _sdk.Start();
         }
@@ -74,7 +77,21 @@ namespace iRacingSimulator
         public void Stop()
         {
             _sdk.Stop();
-            _instance = null;
+            this.Reset();
+        }
+
+        private void Reset()
+        {
+            _mustUpdateSessionData = true;
+            _mustReloadDrivers = true;
+            _currentSessionNumber = null;
+            _driver = null;
+            _leader = null;
+            _drivers.Clear();
+            _timeDelta = null;
+            _telemetry = null;
+            _sessionInfo = null;
+            _isUpdatingDrivers = false;
         }
 
         #region Drivers
@@ -86,6 +103,7 @@ namespace iRacingSimulator
 
         private void UpdateDriverList(SessionInfo info)
         {
+            Debug.WriteLine("UpdateDriverList");
             _isUpdatingDrivers = true;
             this.GetDrivers(info);
             _isUpdatingDrivers = false;
@@ -95,8 +113,10 @@ namespace iRacingSimulator
 
         private void GetDrivers(SessionInfo info)
         {
+            Debug.WriteLine("GetDrivers");
             if (_mustReloadDrivers)
             {
+                Debug.WriteLine("MustReloadDrivers: true");
                 _drivers.Clear();
                 _mustReloadDrivers = false;
             }
@@ -407,6 +427,8 @@ namespace iRacingSimulator
 
         private void SdkOnSessionInfoUpdated(object sender, SdkWrapper.SessionInfoUpdatedEventArgs e)
         {
+            Debug.WriteLine($"SdkOnSessionInfoUpdated: {e.UpdateTime}");
+
             // Cache info
             _sessionInfo = e.SessionInfo;
 
@@ -432,7 +454,9 @@ namespace iRacingSimulator
         {
             // Cache info
             _telemetry = e.TelemetryInfo;
-            
+
+            _isReplay = e.TelemetryInfo.IsReplayPlaying.Value;
+
             // Check if session changed
             if (_currentSessionNumber == null || (_currentSessionNumber.Value != e.TelemetryInfo.SessionNum.Value))
             {
@@ -481,9 +505,7 @@ namespace iRacingSimulator
 
         private void SdkOnDisconnected(object sender, EventArgs e)
         {
-            // If iRacing is closed with the SDK Wrapper active, things like track are not updated.
-            // To fix: simply restart the wrapper when iRacing closes so it starts listening for iRacing anew.
-            this.Start(this.Sdk.TelemetryUpdateFrequency);
+            this.Reset();
             this.OnDisconnected();
         }
 
